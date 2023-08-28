@@ -8,22 +8,42 @@ use dbus::Message;
 
 // This programs implements the equivalent of running the "dbus-monitor" tool
 fn main() {
+
     let use_system_bus = std::env::args().into_iter().any(|a| a == "--system");
 
     let conn = (if use_system_bus { Connection::new_system() } else { Connection::new_session() }).expect("D-Bus connection failed");
 
-    conn.request_name("org.freedesktop.Notifications", false, true, false)
-        .expect("Could not request Notifications");
-
-    let mut rule = MatchRule::new();
-    rule.path = Some("/org/freedesktop/Notifications".into());
     
-    conn.add_match(rule, handle_message)
-        .expect("Could not AddMatch over notifications");
+    if let Err(_) = is_server_already_present(&conn) {
+        /* will return Err if server did not answer, meaning we can take the spot */
+        
 
-    loop {
-        conn.process(Duration::from_millis(1000)).unwrap();
+        conn.request_name("org.freedesktop.Notifications", false, true, false)
+            .expect("Could not request Notifications");
+
+        let mut rule = MatchRule::new();
+        rule.path = Some("/org/freedesktop/Notifications".into());
+        
+        conn.add_match(rule, handle_message)
+            .expect("Could not AddMatch over notifications");
+
+        loop {
+            conn.process(Duration::from_millis(1000)).unwrap();
+        }
     }
+    
+    
+    
+}
+
+fn is_server_already_present(conn: &Connection) -> Result<bool, Box<dyn std::error::Error>> {
+    let proxy = conn.with_proxy("org.freedesktop.Notifications", "/org/freedesktop/Notifications", Duration::from_millis(500));
+
+    let (srvinfo, author, version, _): (String,String,String,String,) = proxy.method_call("org.freedesktop.Notifications", "GetServerInformation", ())?;
+    
+    println!("[DEBUG] {} - {} - v{}", srvinfo, author, version);
+
+    Ok(true)
 }
 
 fn reply_server_information(conn: &Connection, msg: &Message) -> bool {
