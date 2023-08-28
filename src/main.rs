@@ -87,7 +87,23 @@ fn handle_message(_: (), conn: &Connection, msg: &Message) -> bool {
         "GetServerInformation" => reply_server_information(conn, msg),
         "GetCapabilities" => reply_capabilities(conn, msg),
         "Notify"=> notify(conn, msg),
+        "CloseNotification" => close(conn, msg),
         _ => true,
+    }
+}
+
+fn close(conn: &Connection, msg: &Message) -> bool {
+    let reply = msg.method_return();
+    
+    match conn.channel().send(reply) {
+        Ok(_) => {
+            println!("Sent reply !");
+            true
+        },
+        Err(_) => {
+            println!("Reply failed");
+            false
+        },
     }
 }
 
