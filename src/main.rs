@@ -42,11 +42,30 @@ fn reply_server_information(conn: &Connection, msg: &Message) -> bool {
     }
 }
 
+fn reply_capabilities(conn: &Connection, msg: &Message) -> bool {
+    let args = vec!["actions".to_string(), "body".to_string()];
+    let reply = msg.method_return()
+        .append1(args);
+    println!("[DEBUG] {:?}", msg);
+    match conn.channel().send(reply) {
+        Ok(_) => {
+            println!("Sent reply !");
+            true
+        },
+        Err(_) => {
+            println!("Reply failed");
+            false
+        },
+    }
+}
+
+
 fn handle_message(_: (), conn: &Connection, msg: &Message) -> bool {
     println!("[DEBUG] {:?}", msg);
     let member = String::from_utf8_lossy(msg.member().unwrap().as_bytes()).to_string();
     match member.as_ref() {
         "GetServerInformation" => reply_server_information(conn, msg),
+        "GetCapabilities" => reply_capabilities(conn, msg),
         "Notify"=> notify(conn, msg),
         _ => true,
     }
