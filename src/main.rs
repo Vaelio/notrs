@@ -80,6 +80,44 @@ fn reply_capabilities(conn: &Connection, msg: &Message) -> bool {
 }
 
 
+fn reply_introspect(conn: &Connection, msg: &Message) -> bool {
+
+    let string_introspect_reply = r#"<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+   <node name="/org/freedesktop/Notifications">
+     <interface name="org.freedesktop.Notifications">
+       <method name="GetCapabilities">
+       </method>
+       <method name="GetServerInformation">
+       </method>
+       <method name="CloseNotification">
+       </method>
+       <method name="Notify">
+         <arg name="app_name" type="STRING" direction="in"/>
+         <arg name="replaces_id" type="UINT32" direction="in"/>
+         <arg name="app_icon" type="STRING" direction="in"/>
+         <arg name="summary" type="STRING" direction="in"/>
+         <arg name="body" type="STRING" direction="in"/>
+         <arg name="actions" type="as" direction="in"/>
+         <arg name="hints" type="a{sv}" direction="in"/>
+         <arg name="expire_timeout" type="INT32" direction="in"/>
+       </method>
+     </interface>
+  </node>"#;
+
+    let reply = msg.method_return().append1(string_introspect_reply);
+    match conn.channel().send(reply) {
+        Ok(_) => {
+            println!("Sent reply !");
+            true
+        },
+        Err(_) => {
+            println!("Reply failed");
+            false
+        },
+    }
+}
+
 fn handle_message(_: (), conn: &Connection, msg: &Message) -> bool {
     println!("[DEBUG] {:?}", msg);
     let member = String::from_utf8_lossy(msg.member().unwrap().as_bytes()).to_string();
@@ -88,6 +126,7 @@ fn handle_message(_: (), conn: &Connection, msg: &Message) -> bool {
         "GetCapabilities" => reply_capabilities(conn, msg),
         "Notify"=> notify(conn, msg),
         "CloseNotification" => close(conn, msg),
+        "Introspect" => reply_introspect(conn, msg),
         _ => true,
     }
 }
@@ -114,12 +153,15 @@ fn notify(conn: &Connection, msg: &Message) -> bool {
     let summary: &str = args[3].inner().unwrap();
     let content: &str = args[4].inner().unwrap();
 
+    let body = format!("[{}]: {} - {}", pname, summary, content);
+    let time = format!("{}", 3000 + (300 * body.split(' ').count()));
+
     Command::new("hyprctl")
         .arg("notify")
-        .arg("-1")
-        .arg("10000")
-        .arg("rgb(505050)")
-        .arg(format!("[{}]: {} - {}", pname, summary, content))
+        .arg("1")
+        .arg(time)
+        .arg("0")
+        .arg(body)
         .output()
         .expect("Could not send notifications using hyprctl notify");
 
