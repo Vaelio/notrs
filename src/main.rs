@@ -48,7 +48,7 @@ fn is_server_already_present(conn: &Connection) -> Result<bool, Box<dyn std::err
 
 fn reply_server_information(conn: &Connection, msg: &Message) -> bool {
     let reply = msg.method_return()
-        .append_ref(&["notrs".to_string(), "vaelio <archelio@protonmail.com>".to_string(), "0.1.0".to_string(), "1.2".to_string()]);
+        .append_ref(&["notrs".to_string(), env!("CARGO_PKG_AUTHORS").to_string(), env!("CARGO_PKG_VERSION").to_string(), "1.2".to_string()]);
 
     match conn.channel().send(reply) {
         Ok(_) => {
